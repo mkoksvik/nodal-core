@@ -1,0 +1,189 @@
+{
+  "report_metadata": {
+    "generated": "2026-02-14T10:52:56.619554",
+    "total_spaces": 5,
+    "standard": "BFS 2024:1"
+  },
+  "results": [
+    {
+      "space_id": "space_001",
+      "space_name": "Main Bathroom",
+      "space_type": "bathroom",
+      "overall_status": "PARTIAL",
+      "rules_checked": [
+        {
+          "rule_id": "BFS-2024:1-3:14",
+          "rule_name": "Turning Circle (1500mm)",
+          "status": "PASS",
+          "details": "1500mm turning circle fits in space at position (1500.0, 1250.0)mm",
+          "severity": "CRITICAL",
+          "reference": "BFS 2024:1 Section 3:14"
+        },
+        {
+          "rule_id": "BFS-2024:1-3:15",
+          "rule_name": "Door Width (900mm minimum)",
+          "status": "PASS",
+          "details": "Space minimum width 2500mm >= required 900mm (simplified check - actual door width not yet extracted)",
+          "severity": "CRITICAL",
+          "reference": "BFS 2024:1 Section 3:15"
+        },
+        {
+          "rule_id": "BFS-2024:1-3:16",
+          "rule_name": "Threshold Height (25mm max)",
+          "status": "NOT_CHECKED",
+          "details": "Threshold data not available in current IFC file. Will be checked when door/threshold extraction is implemented.",
+          "severity": "WARNING",
+          "reference": "BFS 2024:1 Section 3:16"
+        }
+      ],
+      "passed_count": 2,
+      "failed_count": 0,
+      "not_checked_count": 1,
+      "timestamp": "2026-02-14T10:52:56.617308"
+    },
+    {
+      "space_id": "space_002",
+      "space_name": "Small Bathroom",
+      "space_type": "bathroom",
+      "overall_status": "FAIL",
+      "rules_checked": [
+        {
+          "rule_id": "BFS-2024:1-3:14",
+          "rule_name": "Turning Circle (1500mm)",
+          "status": "FAIL",
+          "details": "1500mm turning circle does not fit: Circle collides with walls at multiple points",
+          "severity": "CRITICAL",
+          "reference": "BFS 2024:1 Section 3:14"
+        },
+        {
+          "rule_id": "BFS-2024:1-3:15",
+          "rule_name": "Door Width (900mm minimum)",
+          "status": "PASS",
+          "details": "Space minimum width 1200mm >= required 900mm (simplified check - actual door width not yet extracted)",
+          "severity": "CRITICAL",
+          "reference": "BFS 2024:1 Section 3:15"
+        },
+        {
+          "rule_id": "BFS-2024:1-3:16",
+          "rule_name": "Threshold Height (25mm max)",
+          "status": "NOT_CHECKED",
+          "details": "Threshold data not available in current IFC file. Will be checked when door/threshold extraction is implemented.",
+          "severity": "WARNING",
+          "reference": "BFS 2024:1 Section 3:16"
+        }
+      ],
+      "passed_count": 1,
+      "failed_count": 1,
+      "not_checked_count": 1,
+      "timestamp": "2026-02-14T10:52:56.618145"
+    },
+    {
+      "space_id": "space_003",
+      "space_name": "Kitchen",
+      "space_type": "kitchen",
+      "overall_status": "PASS",
+      "rules_checked": [
+        {
+          "rule_id": "BFS-2024:1-3:14",
+          "rule_name": "Turning Circle (1500mm)",
+          "status": "NOT_APPLICABLE",
+          "details": "Rule does not apply to space type: kitchen",
+          "severity": "CRITICAL",
+          "reference": "BFS 2024:1 Section 3:14"
+        },
+        {
+          "rule_id": "BFS-2024:1-3:15",
+          "rule_name": "Door Width (900mm minimum)",
+          "status": "NOT_APPLICABLE",
+          "details": "Rule does not apply to space type: kitchen",
+          "severity": "CRITICAL",
+          "reference": "BFS 2024:1 Section 3:15"
+        },
+        {
+          "rule_id": "BFS-2024:1-3:16",
+          "rule_name": "Threshold Height (25mm max)",
+          "status": "NOT_APPLICABLE",
+          "details": "Rule does not apply to space type: kitchen",
+          "severity": "WARNING",
+          "reference": "BFS 2024:1 Section 3:16"
+        }
+      ],
+      "passed_count": 0,
+      "failed_count": 0,
+      "not_checked_count": 0,
+      "timestamp": "2026-02-14T10:52:56.618687"
+    },
+    {
+      "space_id": "space_004",
+      "space_name": "Bathroom Without Geometry",
+      "space_type": "bathroom",
+      "overall_status": "ERROR",
+      "rules_checked": [
+        {
+          "rule_id": "BFS-2024:1-3:14",
+          "rule_name": "Turning Circle (1500mm)",
+          "status": "ERROR",
+          "details": "Geometry check result not provided",
+          "severity": "CRITICAL",
+          "reference": "BFS 2024:1 Section 3:14"
+        },
+        {
+          "rule_id": "BFS-2024:1-3:15",
+          "rule_name": "Door Width (900mm minimum)",
+          "status": "PASS",
+          "details": "Space minimum width 2200mm >= required 900mm (simplified check - actual door width not yet extracted)",
+          "severity": "CRITICAL",
+          "reference": "BFS 2024:1 Section 3:15"
+        },
+        {
+          "rule_id": "BFS-2024:1-3:16",
+          "rule_name": "Threshold Height (25mm max)",
+          "status": "NOT_CHECKED",
+          "details": "Threshold data not available in current IFC file. Will be checked when door/threshold extraction is implemented.",
+          "severity": "WARNING",
+          "reference": "BFS 2024:1 Section 3:16"
+        }
+      ],
+      "passed_count": 1,
+      "failed_count": 0,
+      "not_checked_count": 1,
+      "timestamp": "2026-02-14T10:52:56.618985"
+    },
+    {
+      "space_id": "space_005",
+      "space_name": "Narrow Bathroom",
+      "space_type": "bathroom",
+      "overall_status": "FAIL",
+      "rules_checked": [
+        {
+          "rule_id": "BFS-2024:1-3:14",
+          "rule_name": "Turning Circle (1500mm)",
+          "status": "FAIL",
+          "details": "1500mm turning circle does not fit: Space too narrow for turning circle",
+          "severity": "CRITICAL",
+          "reference": "BFS 2024:1 Section 3:14"
+        },
+        {
+          "rule_id": "BFS-2024:1-3:15",
+          "rule_name": "Door Width (900mm minimum)",
+          "status": "FAIL",
+          "details": "Space minimum width 800mm < required 900mm (simplified check - may pass with proper door extraction)",
+          "severity": "CRITICAL",
+          "reference": "BFS 2024:1 Section 3:15"
+        },
+        {
+          "rule_id": "BFS-2024:1-3:16",
+          "rule_name": "Threshold Height (25mm max)",
+          "status": "NOT_CHECKED",
+          "details": "Threshold data not available in current IFC file. Will be checked when door/threshold extraction is implemented.",
+          "severity": "WARNING",
+          "reference": "BFS 2024:1 Section 3:16"
+        }
+      ],
+      "passed_count": 0,
+      "failed_count": 2,
+      "not_checked_count": 1,
+      "timestamp": "2026-02-14T10:52:56.619280"
+    }
+  ]
+}
