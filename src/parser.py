@@ -13,6 +13,20 @@ import json
 from typing import Dict, List, Optional, Tuple, Any
 
 
+def convert_to_millimeters(coordinates: List[List[float]]) -> List[List[float]]:
+    """
+    Convert IFC coordinates from meters to millimeters.
+    IFC files typically use meters, but BFS 2024:1 uses millimeters.
+    
+    Args:
+        coordinates: List of [x, y] coordinate pairs in meters
+        
+    Returns:
+        List of [x, y] coordinate pairs in millimeters
+    """
+    return [[x * 1000, y * 1000] for x, y in coordinates]
+
+
 def parse_ifc(file_path: str) -> Dict[str, Any]:
     """
     Parse IFC file and extract all space entities with bathroom identification.
@@ -211,13 +225,14 @@ def _get_floor_level(space: Any, ifc_file: Any) -> int:
 def _extract_boundary(space: Any, ifc_file: Any) -> Optional[List[List[float]]]:
     """
     Extract boundary polygon coordinates from space.
+    CRITICAL: Converts from meters (IFC default) to millimeters (BFS 2024:1).
     
     Args:
         space: IfcSpace entity
         ifc_file: Opened IFC file object
         
     Returns:
-        List of [x, y] coordinate pairs or None if boundary not available
+        List of [x, y] coordinate pairs in MILLIMETERS or None if boundary not available
     """
     try:
         # Try to get 2nd level space boundaries (most accurate for compliance)
@@ -241,7 +256,7 @@ def _extract_boundary(space: Any, ifc_file: Any) -> Optional[List[List[float]]]:
                 # Remove duplicates and return unique points
                 unique_points = _remove_duplicate_points(boundary_points)
                 if len(unique_points) >= 3:  # Valid polygon needs at least 3 points
-                    return unique_points
+                    return convert_to_millimeters(unique_points)
         
         # Fallback: try to get shape geometry
         settings = ifcopenshell.geom.settings()
@@ -262,7 +277,7 @@ def _extract_boundary(space: Any, ifc_file: Any) -> Optional[List[List[float]]]:
                     # Get convex hull or boundary outline
                     unique_points = _remove_duplicate_points(points)
                     if len(unique_points) >= 3:
-                        return unique_points[:50]  # Limit to 50 points for performance
+                        return convert_to_millimeters(unique_points[:50])  # Limit to 50 points for performance
         except Exception:
             pass
         
@@ -280,7 +295,7 @@ def _extract_points_from_surface(surface: Any) -> List[List[float]]:
         surface: IFC surface geometry object
         
     Returns:
-        List of [x, y] coordinate pairs
+        List of [x, y] coordinate pairs IN METERS (will be converted later)
     """
     points = []
     
