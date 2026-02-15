@@ -1,6 +1,6 @@
 """
 NODAL - BFS 2024:1 Compliance Checker
-Professional Streamlit Dashboard
+Professional Web Application
 """
 
 import streamlit as st
@@ -10,352 +10,473 @@ import json
 from datetime import datetime
 from parser import parse_ifc
 from geometry import check_multiple_spaces
-from rules import BFS2024ComplianceChecker, generate_compliance_report, export_results_json
+from rules import BFS2024ComplianceChecker, generate_compliance_report
 
 # Page configuration
 st.set_page_config(
-    page_title="NODAL - BFS 2024:1 Compliance",
+    page_title="NODAL - BFS 2024:1",
     page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for professional appearance
-st.markdown("""
-<style>
-    /* Main theme colors */
-    :root {
-        --primary-blue: #005293;
-        --primary-yellow: #FECC00;
-        --success-green: #28a745;
-        --danger-red: #dc3545;
-        --warning-yellow: #ffc107;
-    }
-    
-    /* Header styling */
-    .main-header {
-        background: linear-gradient(135deg, #005293 0%, #0066b3 100%);
-        padding: 2rem;
-        border-radius: 10px;
-        margin-bottom: 2rem;
-        color: white;
-    }
-    
-    .main-title {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-    }
-    
-    .subtitle {
-        font-size: 1.2rem;
-        opacity: 0.9;
-    }
-    
-    /* Card styling */
-    .metric-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border-left: 4px solid;
-        margin-bottom: 1rem;
-    }
-    
-    .metric-card.success {
-        border-left-color: #28a745;
-    }
-    
-    .metric-card.danger {
-        border-left-color: #dc3545;
-    }
-    
-    .metric-card.warning {
-        border-left-color: #ffc107;
-    }
-    
-    .metric-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin: 0;
-    }
-    
-    .metric-label {
-        font-size: 0.9rem;
-        color: #666;
-        margin-top: 0.25rem;
-    }
-    
-    /* Status badges */
-    .status-badge {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
-    
-    .status-pass {
-        background-color: #d4edda;
-        color: #155724;
-    }
-    
-    .status-fail {
-        background-color: #f8d7da;
-        color: #721c24;
-    }
-    
-    .status-partial {
-        background-color: #fff3cd;
-        color: #856404;
-    }
-    
-    /* Upload section */
-    .upload-section {
-        background: #f8f9fa;
-        padding: 2rem;
-        border-radius: 10px;
-        border: 2px dashed #005293;
-        text-align: center;
-        margin: 2rem 0;
-    }
-    
-    /* Results table */
-    .results-table {
-        width: 100%;
-        margin-top: 2rem;
-    }
-    
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
-
-# Header
-st.markdown("""
-<div class="main-header">
-    <div class="main-title">🏗️ NODAL</div>
-    <div class="subtitle">BFS 2024:1 Accessibility Compliance Checker</div>
-    <div style="margin-top: 1rem; font-size: 0.9rem;">
-        Automated compliance checking for Swedish construction standards
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
 # Initialize session state
+if 'language' not in st.session_state:
+    st.session_state.language = 'en'
 if 'results' not in st.session_state:
     st.session_state.results = None
 if 'processed_file' not in st.session_state:
     st.session_state.processed_file = None
 
-# File upload section
-st.markdown("### 📁 Upload IFC File")
+# Translations
+TRANSLATIONS = {
+    "en": {
+        "header_subtitle": "BFS 2024:1 Accessibility Compliance Checker.",
+        "header_desc": "Automated compliance checking for Swedish construction standards.",
+        "upload_title": "Upload IFC File",
+        "upload_subtitle": "Select an IFC file to check compliance.",
+        "file_uploaded": "File uploaded",
+        "check_button": "CHECK COMPLIANCE",
+        "processing": "Processing...",
+        "parsing": "Parsing IFC file...",
+        "geometry_check": "Running geometry checks on",
+        "compliance_check": "Checking BFS 2024:1 compliance...",
+        "complete": "Compliance check complete!",
+        "error_no_spaces": "No spaces found in IFC file",
+        "results_title": "Compliance Results",
+        "total_spaces": "Total Spaces",
+        "passed": "Passed",
+        "failed": "Failed",
+        "partial": "Partial",
+        "detailed_results": "Detailed Results",
+        "space_id": "Space ID",
+        "type": "Type",
+        "overall_status": "Overall Status",
+        "checked": "Checked",
+        "compliance_checks": "Compliance Checks",
+        "severity": "Severity",
+        "export_results": "Export Results",
+        "download_json": "Download JSON Report",
+        "download_text": "Download Text Report",
+        "upload_prompt": "Upload an IFC file above to begin compliance checking",
+        "spaces": "spaces",
+        "footer_title": "BFS 2024:1 – Automated Compliance | Built for Swedish Construction Industry",
+        "footer_tagline": "Ensure accessibility requirements are met through automated geometric analysis.",
+        "footer_copyright": "© 2026 NODAL | Stockholm, Sweden"
+    },
+    "sv": {
+        "header_subtitle": "BFS 2024:1 – Automatiserad regelefterlevnad",
+        "header_desc": "Byggd för svensk byggindustri.",
+        "upload_title": "Ladda upp IFC-fil",
+        "upload_subtitle": "Välj en IFC-fil för att kontrollera regelefterlevnad",
+        "file_uploaded": "Fil uppladdad",
+        "check_button": "KONTROLLERA REGELEFTERLEVNAD",
+        "processing": "Bearbetar...",
+        "parsing": "Analyserar IFC-fil...",
+        "geometry_check": "Kör geometrikontroller på",
+        "compliance_check": "Kontrollerar BFS 2024:1-regelefterlevnad...",
+        "complete": "Regelefterlevnadskontroll slutförd!",
+        "error_no_spaces": "Inga utrymmen hittades i IFC-filen",
+        "results_title": "Resultat för regelefterlevnad",
+        "total_spaces": "Totalt antal utrymmen",
+        "passed": "Godkänt",
+        "failed": "Underkänt",
+        "partial": "Delvis",
+        "detailed_results": "Detaljerade resultat",
+        "space_id": "Utrymmes-ID",
+        "type": "Typ",
+        "overall_status": "Övergripande status",
+        "checked": "Kontrollerad",
+        "compliance_checks": "Regelefterlevnadskontroller",
+        "severity": "Allvarlighetsgrad",
+        "export_results": "Exportera resultat",
+        "download_json": "Ladda ner JSON-rapport",
+        "download_text": "Ladda ner textrapport",
+        "upload_prompt": "Ladda upp en IFC-fil ovan för att börja regelefterlevnadskontrollen",
+        "spaces": "utrymmen",
+        "footer_title": "BFS 2024:1 – Automatiserad regelefterlevnad | Byggd för svensk byggindustri",
+        "footer_tagline": "Säkerställer att tillgänglighetskraven uppfylls genom automatiserad geometrianalys.",
+        "footer_copyright": "© 2026 NODAL | Stockholm, Sverige"
+    }
+}
+
+def t(key):
+    """Get translation"""
+    lang = st.session_state.language
+    return TRANSLATIONS[lang].get(key, key)
+
+# Professional CSS with RED theme
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    /* Hide ALL Streamlit branding */
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    .stDeployButton {display: none !important;}
+    
+    /* Dark red background */
+    .stApp {
+        background: #1a0a0f;
+    }
+    
+    /* RED gradient header */
+    .main-header {
+        background: linear-gradient(135deg, #8B0000 0%, #DC143C 40%, #FF6347 100%);
+        padding: 3rem 2rem;
+        border-radius: 20px;
+        margin-bottom: 3rem;
+        box-shadow: 0 10px 40px rgba(139,0,0,0.4);
+    }
+    
+    .logo-container {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 1rem;
+    }
+    
+    .logo-icon {
+        font-size: 4rem;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+    }
+    
+    .logo-text {
+        font-size: 4rem;
+        font-weight: 900;
+        letter-spacing: -3px;
+        color: white;
+        text-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+    }
+    
+    .header-subtitle {
+        font-size: 1.3rem;
+        color: rgba(255,255,255,0.95);
+        font-weight: 500;
+        margin-top: 0.5rem;
+    }
+    
+    .header-desc {
+        font-size: 1rem;
+        color: rgba(255,255,255,0.85);
+        margin-top: 0.75rem;
+    }
+    
+    /* Upload section */
+    .upload-section {
+        background: rgba(255,255,255,0.03);
+        border: 2px dashed rgba(139,0,0,0.3);
+        border-radius: 15px;
+        padding: 2rem;
+        margin: 2rem 0;
+    }
+    
+    /* Metric cards with red accents */
+    .metric-card {
+        background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+        backdrop-filter: blur(10px);
+        padding: 2rem;
+        border-radius: 15px;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-left: 5px solid;
+        transition: all 0.3s ease;
+        margin-bottom: 1rem;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(220,20,60,0.2);
+    }
+    
+    .metric-card.success { border-left-color: #28a745; }
+    .metric-card.danger { border-left-color: #DC143C; }
+    .metric-card.warning { border-left-color: #FF6347; }
+    
+    .metric-value {
+        font-size: 3.5rem;
+        font-weight: 900;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-label {
+        font-size: 0.9rem;
+        color: rgba(255,255,255,0.6);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: 600;
+    }
+    
+    /* RED buttons */
+    .stButton > button {
+        background: linear-gradient(135deg, #8B0000 0%, #DC143C 100%) !important;
+        color: white !important;
+        border: none !important;
+        padding: 1.2rem 3rem !important;
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 6px 20px rgba(220,20,60,0.4) !important;
+        transition: all 0.3s ease !important;
+        letter-spacing: 1px !important;
+        text-transform: uppercase !important;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-3px) !important;
+        box-shadow: 0 10px 30px rgba(220,20,60,0.6) !important;
+        background: linear-gradient(135deg, #DC143C 0%, #FF6347 100%) !important;
+    }
+    
+    /* Download buttons */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+        color: white !important;
+        border: none !important;
+        padding: 1rem 2rem !important;
+        font-weight: 600 !important;
+        border-radius: 10px !important;
+    }
+    
+    /* Language selector */
+    .stSelectbox {
+        margin-top: 1rem;
+    }
+    
+    /* Text color */
+    h1, h2, h3, h4, h5, h6, p, span, div {
+        color: rgba(255,255,255,0.95) !important;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background: rgba(255,255,255,0.05) !important;
+        border-radius: 10px !important;
+        padding: 1rem !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Footer with red gradient */
+    .footer {
+        background: linear-gradient(135deg, rgba(139,0,0,0.15) 0%, rgba(220,20,60,0.1) 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-top: 3rem;
+        text-align: center;
+        border: 1px solid rgba(139,0,0,0.2);
+    }
+    
+    .footer-title {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #DC143C 0%, #FF6347 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+    
+    .footer-text {
+        color: rgba(255,255,255,0.6);
+        font-size: 0.9rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Header with language toggle
+col_header, col_lang = st.columns([5, 1])
+
+with col_header:
+    st.markdown(f"""
+    <div class="main-header">
+        <div class="logo-container">
+            <div class="logo-icon">🏗️</div>
+            <div class="logo-text">NODAL</div>
+        </div>
+        <div class="header-subtitle">{t('header_subtitle')}</div>
+        <div class="header-desc">{t('header_desc')}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_lang:
+    language = st.selectbox(
+        "Language",
+        ["🇬🇧 English", "🇸🇪 Svenska"],
+        index=0 if st.session_state.language == 'en' else 1,
+        label_visibility="collapsed"
+    )
+    st.session_state.language = "sv" if "Svenska" in language else "en"
+
+# Upload section
+st.markdown(f"## 📁 {t('upload_title')}")
 
 uploaded_file = st.file_uploader(
-    "Select an IFC file to check compliance",
+    t('upload_subtitle'),
     type=['ifc'],
-    help="Upload your building model in IFC format (Industry Foundation Classes)"
+    label_visibility="collapsed"
 )
 
-if uploaded_file is not None:
-    st.success(f"✓ File uploaded: {uploaded_file.name} ({uploaded_file.size / 1024:.1f} KB)")
+if uploaded_file:
+    st.success(f"✓ {t('file_uploaded')}: {uploaded_file.name} ({uploaded_file.size / 1024:.1f} KB)")
     
-    # Process button
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("🔍 Check Compliance", type="primary", use_container_width=True):
-            # Save uploaded file temporarily
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.ifc') as tmp_file:
-                tmp_file.write(uploaded_file.getvalue())
-                tmp_path = tmp_file.name
+        if st.button(f"🔍 {t('check_button')}", use_container_width=True):
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.ifc') as tmp:
+                tmp.write(uploaded_file.getvalue())
+                tmp_path = tmp.name
             
             try:
-                # Processing with status updates
-                with st.spinner("Processing..."):
-                    # Step 1: Parse IFC
-                    status_placeholder = st.empty()
-                    status_placeholder.info("📖 Parsing IFC file...")
+                with st.spinner(t('processing')):
+                    status = st.empty()
                     
-                    parsed_data = parse_ifc(tmp_path)
-                    spaces = parsed_data.get("spaces", [])
+                    status.info(f"📖 {t('parsing')}")
+                    parsed = parse_ifc(tmp_path)
+                    spaces = parsed.get("spaces", [])
                     
                     if not spaces:
-                        st.error("❌ No spaces found in IFC file. Please check your file format.")
+                        st.error(f"❌ {t('error_no_spaces')}")
                         st.stop()
                     
-                    # Step 2: Geometry checks
-                    status_placeholder.info(f"📐 Running geometry checks on {len(spaces)} spaces...")
+                    status.info(f"📐 {t('geometry_check')} {len(spaces)} {t('spaces')}...")
                     geometry_results = check_multiple_spaces(spaces)
                     
-                    # Step 3: Compliance checks
-                    status_placeholder.info("✓ Checking BFS 2024:1 compliance...")
+                    status.info(f"✓ {t('compliance_check')}")
                     checker = BFS2024ComplianceChecker()
                     compliance_results = []
                     
                     for i, space in enumerate(spaces):
-                        geometry_result = geometry_results[i]
-                        compliance_result = checker.check_compliance(space, geometry_result)
-                        compliance_results.append(compliance_result)
+                        result = checker.check_compliance(space, geometry_results[i])
+                        compliance_results.append(result)
                     
-                    status_placeholder.success("✓ Compliance check complete!")
+                    status.success(f"✓ {t('complete')}")
                     
-                    # Store results in session state
                     st.session_state.results = compliance_results
                     st.session_state.processed_file = uploaded_file.name
                     
             except Exception as e:
-                st.error(f"❌ Error processing file: {str(e)}")
-                st.exception(e)
+                st.error(f"❌ Error: {str(e)}")
             finally:
-                # Clean up temp file
-                if os.path.exists(tmp_path):
-                    os.unlink(tmp_path)
+                os.unlink(tmp_path)
 
-# Display results
+# Results
 if st.session_state.results:
     st.markdown("---")
-    st.markdown("## 📊 Compliance Results")
+    st.markdown(f"## 📊 {t('results_title')}")
     
     results = st.session_state.results
+    passed = sum(1 for r in results if r.overall_status.value == "PASS")
+    failed = sum(1 for r in results if r.overall_status.value == "FAIL")
+    partial = sum(1 for r in results if r.overall_status.value == "PARTIAL")
     
-    # Summary metrics
-    passed_count = sum(1 for r in results if r.overall_status.value == "PASS")
-    failed_count = sum(1 for r in results if r.overall_status.value == "FAIL")
-    partial_count = sum(1 for r in results if r.overall_status.value == "PARTIAL")
+    # Metrics
+    c1, c2, c3, c4 = st.columns(4)
     
-    # Metric cards
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
+    with c1:
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-value">{len(results)}</div>
-            <div class="metric-label">Total Spaces</div>
+            <div class="metric-label">{t('total_spaces')}</div>
         </div>
         """, unsafe_allow_html=True)
     
-    with col2:
+    with c2:
         st.markdown(f"""
         <div class="metric-card success">
-            <div class="metric-value" style="color: #28a745;">✓ {passed_count}</div>
-            <div class="metric-label">Passed</div>
+            <div class="metric-value" style="color: #28a745;">✓ {passed}</div>
+            <div class="metric-label">{t('passed')}</div>
         </div>
         """, unsafe_allow_html=True)
     
-    with col3:
+    with c3:
         st.markdown(f"""
         <div class="metric-card danger">
-            <div class="metric-value" style="color: #dc3545;">✗ {failed_count}</div>
-            <div class="metric-label">Failed</div>
+            <div class="metric-value" style="color: #DC143C;">✗ {failed}</div>
+            <div class="metric-label">{t('failed')}</div>
         </div>
         """, unsafe_allow_html=True)
     
-    with col4:
+    with c4:
         st.markdown(f"""
         <div class="metric-card warning">
-            <div class="metric-value" style="color: #ffc107;">⚠ {partial_count}</div>
-            <div class="metric-label">Partial</div>
+            <div class="metric-value" style="color: #FF6347;">⚠ {partial}</div>
+            <div class="metric-label">{t('partial')}</div>
         </div>
         """, unsafe_allow_html=True)
     
     # Detailed results
-    st.markdown("### 📋 Detailed Results")
+    st.markdown(f"### 📋 {t('detailed_results')}")
     
     for result in results:
-        # Determine status color and icon
-        if result.overall_status.value == "PASS":
-            status_class = "status-pass"
-            status_icon = "✓"
-        elif result.overall_status.value == "FAIL":
-            status_class = "status-fail"
-            status_icon = "✗"
-        else:
-            status_class = "status-partial"
-            status_icon = "⚠"
+        icon = "✓" if result.overall_status.value == "PASS" else "✗" if result.overall_status.value == "FAIL" else "⚠"
         
-        # Create expander for each space
-        with st.expander(
-            f"{status_icon} **{result.space_name}** ({result.space_type}) - {result.overall_status.value}",
-            expanded=(result.overall_status.value == "FAIL")
-        ):
-            # Space info
+        with st.expander(f"{icon} **{result.space_name}** ({result.space_type}) - {result.overall_status.value}",
+                        expanded=(result.overall_status.value == "FAIL")):
+            
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown(f"**Space ID:** `{result.space_id}`")
-                st.markdown(f"**Type:** {result.space_type}")
+                st.markdown(f"**{t('space_id')}:** `{result.space_id}`")
+                st.markdown(f"**{t('type')}:** {result.space_type}")
             with col2:
-                st.markdown(f"**Overall Status:** {result.overall_status.value}")
-                st.markdown(f"**Checked:** {result.timestamp.split('T')[1].split('.')[0]}")
+                st.markdown(f"**{t('overall_status')}:** {result.overall_status.value}")
+                st.markdown(f"**{t('checked')}:** {result.timestamp.split('T')[1].split('.')[0]}")
             
             st.markdown("---")
-            
-            # Rule checks
-            st.markdown("**Compliance Checks:**")
+            st.markdown(f"**{t('compliance_checks')}:**")
             
             for rule in result.rules_checked:
-                # Icon based on status
-                if rule.status.value == "PASS":
-                    icon = "✓"
-                    color = "#28a745"
-                elif rule.status.value == "FAIL":
-                    icon = "✗"
-                    color = "#dc3545"
-                elif rule.status.value == "NOT_APPLICABLE":
-                    icon = "-"
-                    color = "#6c757d"
-                elif rule.status.value == "NOT_CHECKED":
-                    icon = "?"
-                    color = "#ffc107"
-                else:
-                    icon = "!"
-                    color = "#dc3545"
+                colors = {"PASS": "#28a745", "FAIL": "#DC143C", "NOT_APPLICABLE": "#6c757d", 
+                         "NOT_CHECKED": "#FF6347", "ERROR": "#DC143C"}
+                icons = {"PASS": "✓", "FAIL": "✗", "NOT_APPLICABLE": "-", "NOT_CHECKED": "?", "ERROR": "!"}
                 
-                # Display rule result
+                color = colors.get(rule.status.value, "#666")
+                icon = icons.get(rule.status.value, "?")
+                
                 st.markdown(f"""
-                <div style="padding: 0.75rem; margin: 0.5rem 0; background: #f8f9fa; border-radius: 5px; border-left: 3px solid {color};">
-                    <div style="font-weight: 600; color: {color};">
+                <div style="padding: 1rem; margin: 0.5rem 0; background: rgba(255,255,255,0.05); 
+                            border-radius: 10px; border-left: 4px solid {color};">
+                    <div style="font-weight: 700; color: {color}; font-size: 1.05rem;">
                         {icon} {rule.rule_name}
                     </div>
-                    <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">
-                        {rule.reference} | Severity: {rule.severity.value}
+                    <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-top: 0.3rem;">
+                        {rule.reference} | {t('severity')}: {rule.severity.value}
                     </div>
-                    <div style="margin-top: 0.5rem; font-size: 0.9rem;">
+                    <div style="margin-top: 0.6rem; font-size: 0.95rem; color: rgba(255,255,255,0.8);">
                         {rule.details}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
     
-    # Export options
+    # Export
     st.markdown("---")
-    st.markdown("### 💾 Export Results")
+    st.markdown(f"### 💾 {t('export_results')}")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        # JSON export
         json_data = {
             "file": st.session_state.processed_file,
             "timestamp": datetime.now().isoformat(),
+            "language": st.session_state.language,
             "results": [r.to_dict() for r in results]
         }
         
-        json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
-        
         st.download_button(
-            label="📄 Download JSON Report",
-            data=json_str,
+            label=f"📄 {t('download_json')}",
+            data=json.dumps(json_data, indent=2, ensure_ascii=False),
             file_name=f"nodal_compliance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
             mime="application/json",
             use_container_width=True
         )
     
     with col2:
-        # Text report
         text_report = generate_compliance_report(results, include_passed=True)
         
         st.download_button(
-            label="📋 Download Text Report",
+            label=f"📋 {t('download_text')}",
             data=text_report,
             file_name=f"nodal_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
             mime="text/plain",
@@ -363,33 +484,18 @@ if st.session_state.results:
         )
 
 else:
-    # No results yet - show instructions
-    st.info("👆 Upload an IFC file above to begin compliance checking")
-    
-    with st.expander("ℹ️ About NODAL"):
-        st.markdown("""
-        **NODAL** is an automated compliance checker for Swedish BFS 2024:1 accessibility standards.
-        
-        **Currently checking:**
-        - ✓ BFS 2024:1 Section 3:14 - 1500mm wheelchair turning circle
-        - ✓ BFS 2024:1 Section 3:15 - 900mm minimum door width
-        - ⚠ BFS 2024:1 Section 3:16 - 25mm maximum threshold height (placeholder)
-        
-        **How to use:**
-        1. Upload your building model (IFC format)
-        2. Click "Check Compliance"
-        3. Review results and download reports
-        
-        **Supported file formats:**
-        - IFC 4.0 (recommended)
-        - IFC 2x3 (supported)
-        """)
+    st.info(f"👆 {t('upload_prompt')}")
 
 # Footer
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #666; font-size: 0.85rem; padding: 1rem;">
-    NODAL - BFS 2024:1 Compliance Checker | Built for Swedish Construction Industry<br>
-    <em>Ensuring accessibility compliance through automated geometric analysis</em>
+st.markdown(f"""
+<div class="footer">
+    <div class="footer-title">NODAL</div>
+    <div class="footer-text">{t('footer_title')}</div>
+    <div class="footer-text" style="margin-top: 0.5rem; font-style: italic;">
+        {t('footer_tagline')}
+    </div>
+    <div class="footer-text" style="margin-top: 1rem;">
+        {t('footer_copyright')}
+    </div>
 </div>
 """, unsafe_allow_html=True)
