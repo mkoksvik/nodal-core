@@ -123,12 +123,67 @@ class BFS2024ComplianceChecker:
         "applies_to": ["bathroom", "wc", "toilet", "entrance"]
     }
     
+    RULE_CORRIDOR_WIDTH = {
+        "id": "BFS-2024:1-3:22",
+        "name": "Corridor Width (1300mm minimum)",
+        "reference": "BFS 2024:1 Section 3:22",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["corridor", "circulation", "passage", "hallway", "korridor"],
+        "description_en": "Minimum clear width 1300mm for accessibility.",
+        "description_sv": "Minst 1300 mm fri bredd för tillgänglighet."
+    }
+    
+    RULE_RAMP_SLOPE = {
+        "id": "BFS-2024:1-3:231",
+        "name": "Ramp Slope (max 1:12 / 8.33%)",
+        "reference": "BFS 2024:1 Section 3:231",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["ramp", "rampway"],
+        "description_en": "Maximum slope 1:12 (8.33%) for ramps.",
+        "description_sv": "Maximal lutning 1:12 (8,33 %) för ramper."
+    }
+    
+    RULE_HANDRAIL_HEIGHT = {
+        "id": "BFS-2024:1-3:232",
+        "name": "Handrail Height (900–1000mm)",
+        "reference": "BFS 2024:1 Section 3:232",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["ramp", "stair", "stairs", "trappa"],
+        "description_en": "Handrail height must be between 900mm and 1000mm.",
+        "description_sv": "Räckeshöjd ska vara 900–1000 mm."
+    }
+    
+    RULE_BATHROOM_DOOR_SWING = {
+        "id": "BFS-2024:1-3:241",
+        "name": "Bathroom Door Opens Outward",
+        "reference": "BFS 2024:1 Section 3:241",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["bathroom", "wc", "toilet"],
+        "description_en": "Bathroom door must open outward for emergency access.",
+        "description_sv": "Dörr till badrum/toalett ska öppnas utåt för nödutrymning."
+    }
+    
+    RULE_REST_AREA_25M = {
+        "id": "BFS-2024:1-3:311",
+        "name": "Rest Area Every 25m (corridors)",
+        "reference": "BFS 2024:1 Section 3:311",
+        "severity": Severity.WARNING,
+        "applies_to": ["corridor", "circulation", "passage", "hallway", "korridor"],
+        "description_en": "Rest area or widening required at least every 25m in corridors.",
+        "description_sv": "Viloplats eller breddning minst var 25:e meter i korridorer."
+    }
+    
     def __init__(self):
         """Initialize the compliance checker"""
         self.rules = [
             self.RULE_TURNING_CIRCLE,
             self.RULE_DOOR_WIDTH,
-            self.RULE_THRESHOLD
+            self.RULE_THRESHOLD,
+            self.RULE_CORRIDOR_WIDTH,
+            self.RULE_RAMP_SLOPE,
+            self.RULE_HANDRAIL_HEIGHT,
+            self.RULE_BATHROOM_DOOR_SWING,
+            self.RULE_REST_AREA_25M,
         ]
     
     def check_compliance(
@@ -172,6 +227,31 @@ class BFS2024ComplianceChecker:
         # Rule 3: Threshold Height
         rule_results.append(
             self.check_threshold_rule(space_dict)
+        )
+        
+        # Rule 4: Corridor Width (3:22)
+        rule_results.append(
+            self.check_corridor_width_rule(space_dict)
+        )
+        
+        # Rule 5: Ramp Slope (3:231)
+        rule_results.append(
+            self.check_ramp_slope_rule(space_dict)
+        )
+        
+        # Rule 6: Handrail Height (3:232)
+        rule_results.append(
+            self.check_handrail_height_rule(space_dict)
+        )
+        
+        # Rule 7: Bathroom Door Opens Outward (3:241)
+        rule_results.append(
+            self.check_bathroom_door_swing_rule(space_dict)
+        )
+        
+        # Rule 8: Rest Area Every 25m (3:311)
+        rule_results.append(
+            self.check_rest_area_25m_rule(space_dict)
         )
         
         # Calculate statistics
@@ -380,6 +460,275 @@ class BFS2024ComplianceChecker:
             rule_name=rule["name"],
             status=RuleStatus.NOT_CHECKED,
             details="Threshold data not available in current IFC file. Will be checked when door/threshold extraction is implemented.",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_corridor_width_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:22 - Corridor Width Requirement.
+        
+        Requirement: Minimum 1300mm clear width for corridors.
+        English: Minimum clear width 1300mm for accessibility.
+        Swedish: Minst 1300 mm fri bredd för tillgänglighet.
+        
+        Returns NOT_CHECKED if corridor width data is not in space_dict.
+        """
+        rule = self.RULE_CORRIDOR_WIDTH
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        # Check for corridor width (from future IFC extraction)
+        corridor_width_mm = space_dict.get("corridor_width_mm")
+        if corridor_width_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Corridor width not available in current IFC file. Will be checked when corridor geometry extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        required_width = 1300  # mm
+        if corridor_width_mm >= required_width:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Corridor width {corridor_width_mm:.0f}mm >= required {required_width}mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Corridor width {corridor_width_mm:.0f}mm < required {required_width}mm. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_ramp_slope_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:231 - Ramp Slope Requirement.
+        
+        Requirement: Maximum slope 1:12 (8.33%) for ramps.
+        English: Maximum slope 1:12 (8.33%) for ramps.
+        Swedish: Maximal lutning 1:12 (8,33 %) för ramper.
+        
+        Returns NOT_CHECKED if ramp slope data is not in space_dict.
+        """
+        rule = self.RULE_RAMP_SLOPE
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        # Slope as ratio (e.g. 0.0833 = 8.33%) or as rise:run from IFC
+        slope_ratio = space_dict.get("ramp_slope_ratio")  # e.g. 0.0833
+        if slope_ratio is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Ramp slope not available in current IFC file. Will be checked when ramp geometry extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        max_slope = 1 / 12  # 8.33%
+        if slope_ratio <= max_slope:
+            pct = slope_ratio * 100
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Ramp slope {pct:.2f}% (1:{1/slope_ratio:.1f}) <= max 8.33% (1:12). {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        pct = slope_ratio * 100
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Ramp slope {pct:.2f}% exceeds max 8.33% (1:12). {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_handrail_height_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:232 - Handrail Height Requirement.
+        
+        Requirement: Handrail height 900–1000mm.
+        English: Handrail height must be between 900mm and 1000mm.
+        Swedish: Räckeshöjd ska vara 900–1000 mm.
+        
+        Returns NOT_CHECKED if handrail height data is not in space_dict.
+        """
+        rule = self.RULE_HANDRAIL_HEIGHT
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        handrail_height_mm = space_dict.get("handrail_height_mm")
+        if handrail_height_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Handrail height not available in current IFC file. Will be checked when railing extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        min_h, max_h = 900, 1000
+        if min_h <= handrail_height_mm <= max_h:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Handrail height {handrail_height_mm:.0f}mm within 900–1000mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Handrail height {handrail_height_mm:.0f}mm outside 900–1000mm. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_bathroom_door_swing_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:241 - Bathroom Door Opens Outward.
+        
+        Requirement: Bathroom door must open outward for emergency access.
+        English: Bathroom door must open outward for emergency access.
+        Swedish: Dörr till badrum/toalett ska öppnas utåt för nödutrymning.
+        
+        Returns NOT_CHECKED if door swing data is not in space_dict.
+        """
+        rule = self.RULE_BATHROOM_DOOR_SWING
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        # Expects space_dict.get("door_opens_outward") == True/False when implemented
+        door_opens_outward = space_dict.get("door_opens_outward")
+        if door_opens_outward is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Door swing direction not available in current IFC file. Will be checked when door extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        if door_opens_outward:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Bathroom door opens outward. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details="Bathroom door does not open outward; must open outward for emergency access.",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_rest_area_25m_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:311 - Rest Area Every 25m in Corridors.
+        
+        Requirement: Rest area or widening at least every 25m in corridors.
+        English: Rest area or widening required at least every 25m in corridors.
+        Swedish: Viloplats eller breddning minst var 25:e meter i korridorer.
+        
+        Returns NOT_CHECKED if corridor length/rest-area data is not in space_dict.
+        """
+        rule = self.RULE_REST_AREA_25M
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        # Expects e.g. corridor_length_m, rest_area_interval_m or rest_areas_present
+        has_rest_areas_ok = space_dict.get("rest_area_25m_compliant")
+        if has_rest_areas_ok is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Corridor length and rest area data not available in current IFC file. Will be checked when corridor/rest-area extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        if has_rest_areas_ok:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Rest area or widening provided at least every 25m. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details="Rest area or widening required at least every 25m in corridor.",
             severity=rule["severity"],
             reference=rule["reference"]
         )
