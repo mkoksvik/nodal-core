@@ -223,6 +223,76 @@ class BFS2024ComplianceChecker:
         "description_sv": "Steghöjden max 150 mm, stegbredden minst 300 mm."
     }
     
+    RULE_PARKING_WIDTH = {
+        "id": "BFS-2024:1-3:131",
+        "name": "Accessible Parking Space Width (3600mm minimum)",
+        "reference": "BFS 2024:1 Section 3:131",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["parking", "parkeringsplats", "accessible_parking", "parking_space"],
+        "description_en": "Accessible parking space minimum clear width 3600mm.",
+        "description_sv": "Tillgänglig parkeringsplats minst 3600 mm bred."
+    }
+    
+    RULE_PARKING_LENGTH = {
+        "id": "BFS-2024:1-3:132",
+        "name": "Parking Space Length (5000mm minimum)",
+        "reference": "BFS 2024:1 Section 3:132",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["parking", "parkeringsplats", "accessible_parking", "parking_space"],
+        "description_en": "Parking space length minimum 5000mm.",
+        "description_sv": "Parkeringsplatsens längd minst 5000 mm."
+    }
+    
+    RULE_STAIR_HANDRAIL_BOTH = {
+        "id": "BFS-2024:1-3:411",
+        "name": "Stair Handrail Both Sides Required",
+        "reference": "BFS 2024:1 Section 3:411",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["stair", "stairs", "trappa"],
+        "description_en": "Stairs must have handrails on both sides.",
+        "description_sv": "Trappor ska ha räcken på båda sidor."
+    }
+    
+    RULE_STAIR_WIDTH = {
+        "id": "BFS-2024:1-3:412",
+        "name": "Stair Width (1200mm minimum)",
+        "reference": "BFS 2024:1 Section 3:412",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["stair", "stairs", "trappa"],
+        "description_en": "Stair clear width minimum 1200mm.",
+        "description_sv": "Trappans fria bredd minst 1200 mm."
+    }
+    
+    RULE_WINDOW_SILL_HEIGHT = {
+        "id": "BFS-2024:1-3:531",
+        "name": "Window Sill Height (max 600mm from floor)",
+        "reference": "BFS 2024:1 Section 3:531",
+        "severity": Severity.WARNING,
+        "applies_to": ["window", "fönster", "room", "rum", "space"],
+        "description_en": "Window sill height maximum 600mm from floor level.",
+        "description_sv": "Fönsterbrädans höjd max 600 mm från golvnivå."
+    }
+    
+    RULE_WINDOW_OPENING_SIZE = {
+        "id": "BFS-2024:1-3:532",
+        "name": "Window Opening (min 900mm x 1200mm)",
+        "reference": "BFS 2024:1 Section 3:532",
+        "severity": Severity.WARNING,
+        "applies_to": ["window", "fönster", "room", "rum", "space"],
+        "description_en": "Window opening minimum 900mm x 1200mm for emergency access.",
+        "description_sv": "Fönsteröppning minst 900 mm x 1200 mm för nödutrymning."
+    }
+    
+    RULE_TACTILE_GUIDANCE = {
+        "id": "BFS-2024:1-3:611",
+        "name": "Tactile Floor Guidance (visually impaired)",
+        "reference": "BFS 2024:1 Section 3:611",
+        "severity": Severity.WARNING,
+        "applies_to": ["corridor", "circulation", "passage", "hallway", "korridor", "public", "offentlig", "lobby", "entrance"],
+        "description_en": "Tactile floor guidance required for visually impaired in public areas.",
+        "description_sv": "Taktil golvledning krävs för synskadade i offentliga områden."
+    }
+    
     def __init__(self):
         """Initialize the compliance checker"""
         self.rules = [
@@ -239,6 +309,13 @@ class BFS2024ComplianceChecker:
             self.RULE_EMERGENCY_EXIT_WIDTH,
             self.RULE_EMERGENCY_EXIT_DOOR_SWING,
             self.RULE_STAIR_DIMENSIONS,
+            self.RULE_PARKING_WIDTH,
+            self.RULE_PARKING_LENGTH,
+            self.RULE_STAIR_HANDRAIL_BOTH,
+            self.RULE_STAIR_WIDTH,
+            self.RULE_WINDOW_SILL_HEIGHT,
+            self.RULE_WINDOW_OPENING_SIZE,
+            self.RULE_TACTILE_GUIDANCE,
         ]
     
     def check_compliance(
@@ -332,6 +409,41 @@ class BFS2024ComplianceChecker:
         # Rule 13: Stair Step Dimensions (3:421)
         rule_results.append(
             self.check_stair_dimensions_rule(space_dict)
+        )
+        
+        # Rule 14: Accessible Parking Width (3:131)
+        rule_results.append(
+            self.check_parking_width_rule(space_dict)
+        )
+        
+        # Rule 15: Parking Space Length (3:132)
+        rule_results.append(
+            self.check_parking_length_rule(space_dict)
+        )
+        
+        # Rule 16: Stair Handrail Both Sides (3:411)
+        rule_results.append(
+            self.check_stair_handrail_both_rule(space_dict)
+        )
+        
+        # Rule 17: Stair Width (3:412)
+        rule_results.append(
+            self.check_stair_width_rule(space_dict)
+        )
+        
+        # Rule 18: Window Sill Height (3:531)
+        rule_results.append(
+            self.check_window_sill_height_rule(space_dict)
+        )
+        
+        # Rule 19: Window Opening Size (3:532)
+        rule_results.append(
+            self.check_window_opening_size_rule(space_dict)
+        )
+        
+        # Rule 20: Tactile Floor Guidance (3:611)
+        rule_results.append(
+            self.check_tactile_guidance_rule(space_dict)
         )
         
         # Calculate statistics
@@ -1085,6 +1197,381 @@ class BFS2024ComplianceChecker:
             rule_name=rule["name"],
             status=RuleStatus.FAIL,
             details=f"Stair dimensions non-compliant: {'; '.join(issues)}. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_parking_width_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:131 - Accessible Parking Space Width.
+        
+        Requirement: Accessible parking space minimum 3600mm wide.
+        English: Accessible parking space minimum clear width 3600mm.
+        Swedish: Tillgänglig parkeringsplats minst 3600 mm bred.
+        
+        Returns NOT_CHECKED if parking width is not in space_dict.
+        """
+        rule = self.RULE_PARKING_WIDTH
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        width_mm = space_dict.get("parking_width_mm")
+        if width_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Parking space width not available in current IFC file. Will be checked when parking geometry extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        required = 3600
+        if width_mm >= required:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Parking width {width_mm:.0f}mm >= required {required}mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Parking width {width_mm:.0f}mm < required {required}mm. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_parking_length_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:132 - Parking Space Length.
+        
+        Requirement: Parking space length minimum 5000mm.
+        English: Parking space length minimum 5000mm.
+        Swedish: Parkeringsplatsens längd minst 5000 mm.
+        
+        Returns NOT_CHECKED if parking length is not in space_dict.
+        """
+        rule = self.RULE_PARKING_LENGTH
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        length_mm = space_dict.get("parking_length_mm")
+        if length_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Parking space length not available in current IFC file. Will be checked when parking geometry extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        required = 5000
+        if length_mm >= required:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Parking length {length_mm:.0f}mm >= required {required}mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Parking length {length_mm:.0f}mm < required {required}mm. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_stair_handrail_both_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:411 - Stair Handrail Both Sides.
+        
+        Requirement: Stairs must have handrails on both sides.
+        English: Stairs must have handrails on both sides.
+        Swedish: Trappor ska ha räcken på båda sidor.
+        
+        Returns NOT_CHECKED if handrail data is not in space_dict.
+        """
+        rule = self.RULE_STAIR_HANDRAIL_BOTH
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        both_sides = space_dict.get("stair_handrail_both_sides")
+        if both_sides is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Stair handrail configuration not available in current IFC file. Will be checked when railing extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        if both_sides:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Stair has handrails on both sides. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details="Stair must have handrails on both sides.",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_stair_width_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:412 - Stair Width.
+        
+        Requirement: Stair clear width minimum 1200mm.
+        English: Stair clear width minimum 1200mm.
+        Swedish: Trappans fria bredd minst 1200 mm.
+        
+        Returns NOT_CHECKED if stair width is not in space_dict.
+        """
+        rule = self.RULE_STAIR_WIDTH
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        width_mm = space_dict.get("stair_width_mm")
+        if width_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Stair width not available in current IFC file. Will be checked when stair geometry extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        required = 1200
+        if width_mm >= required:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Stair width {width_mm:.0f}mm >= required {required}mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Stair width {width_mm:.0f}mm < required {required}mm. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_window_sill_height_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:531 - Window Sill Height.
+        
+        Requirement: Window sill height maximum 600mm from floor.
+        English: Window sill height maximum 600mm from floor level.
+        Swedish: Fönsterbrädans höjd max 600 mm från golvnivå.
+        
+        Returns NOT_CHECKED if window sill height is not in space_dict.
+        """
+        rule = self.RULE_WINDOW_SILL_HEIGHT
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        sill_height_mm = space_dict.get("window_sill_height_mm")
+        if sill_height_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Window sill height not available in current IFC file. Will be checked when window extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        max_height = 600
+        if sill_height_mm <= max_height:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Window sill height {sill_height_mm:.0f}mm <= max {max_height}mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Window sill height {sill_height_mm:.0f}mm > max {max_height}mm. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_window_opening_size_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:532 - Window Opening Size.
+        
+        Requirement: Window opening minimum 900mm x 1200mm for emergency access.
+        English: Window opening minimum 900mm x 1200mm for emergency access.
+        Swedish: Fönsteröppning minst 900 mm x 1200 mm för nödutrymning.
+        
+        Returns NOT_CHECKED if window opening dimensions are not in space_dict.
+        """
+        rule = self.RULE_WINDOW_OPENING_SIZE
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        width_mm = space_dict.get("window_opening_width_mm")
+        height_mm = space_dict.get("window_opening_height_mm")
+        if width_mm is None or height_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Window opening dimensions not available in current IFC file. Will be checked when window extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        min_width, min_height = 900, 1200
+        if width_mm >= min_width and height_mm >= min_height:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Window opening {width_mm:.0f}mm x {height_mm:.0f}mm >= required {min_width}mm x {min_height}mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        issues = []
+        if width_mm < min_width:
+            issues.append(f"width {width_mm:.0f}mm < {min_width}mm")
+        if height_mm < min_height:
+            issues.append(f"height {height_mm:.0f}mm < {min_height}mm")
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Window opening insufficient: {'; '.join(issues)}. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_tactile_guidance_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:611 - Tactile Floor Guidance.
+        
+        Requirement: Tactile floor guidance for visually impaired in public areas.
+        English: Tactile floor guidance required for visually impaired in public areas.
+        Swedish: Taktil golvledning krävs för synskadade i offentliga områden.
+        
+        Returns NOT_CHECKED if tactile guidance data is not in space_dict.
+        """
+        rule = self.RULE_TACTILE_GUIDANCE
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        has_guidance = space_dict.get("tactile_guidance_present")
+        if has_guidance is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Tactile floor guidance data not available in current IFC file. Will be checked when floor finish/guidance extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        if has_guidance:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Tactile floor guidance present. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details="Tactile floor guidance required for visually impaired in this public area.",
             severity=rule["severity"],
             reference=rule["reference"]
         )
