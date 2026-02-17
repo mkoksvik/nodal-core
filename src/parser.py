@@ -371,22 +371,22 @@ def _extract_space_data(space: Any, ifc_file: Any) -> Optional[Dict[str, Any]]:
 
 
 def _classify_space_type(space_name: str) -> str:
-    """
-    Classify space as bathroom or other based on name.
+    name = space_name.lower()
     
-    Args:
-        space_name: Name of the space
-        
-    Returns:
-        "bathroom" or "other"
-    """
-    bathroom_keywords = ["bath", "wc", "toilet", "restroom", "badrum"]
-    
-    space_name_lower = space_name.lower()
-    
-    for keyword in bathroom_keywords:
-        if keyword in space_name_lower:
-            return "bathroom"
+    if any(k in name for k in ["bath", "wc", "toilet", "restroom", "badrum", "toalett", "wc"]):
+        return "bathroom"
+    if any(k in name for k in ["corridor", "hall", "korridor", "passage", "gång"]):
+        return "corridor"
+    if any(k in name for k in ["elevator", "lift", "hiss"]):
+        return "elevator"
+    if any(k in name for k in ["stair", "trappa", "staircase"]):
+        return "stair"
+    if any(k in name for k in ["parking", "parker", "garage"]):
+        return "parking"
+    if any(k in name for k in ["exit", "nöd", "evacuation", "nödutgång"]):
+        return "emergency_exit"
+    if any(k in name for k in ["ramp"]):
+        return "ramp"
     
     return "other"
 
