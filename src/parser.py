@@ -10,7 +10,7 @@ import ifcopenshell
 import ifcopenshell.geom
 import os
 import json
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def convert_to_millimeters(coordinates: List[List[float]]) -> List[List[float]]:
@@ -108,6 +108,109 @@ def parse_ifc(file_path: str) -> Dict[str, Any]:
     return result
 
 
+def _get_property_value(space: Any, *property_names: str) -> Optional[Any]:
+    """
+    Get first matching IfcPropertySingleValue from space's property sets.
+    Searches IsDefinedBy -> IfcRelDefinesByProperties -> IfcPropertySet -> HasProperties.
+    
+    Args:
+        space: IfcSpace or other entity with IsDefinedBy
+        property_names: One or more property names to try (e.g. "Width", "ClearWidth")
+        
+    Returns:
+        Raw NominalValue (number/string) or None if not found
+    """
+    try:
+        for rel in getattr(space, "IsDefinedBy", []) or []:
+            if getattr(rel, "is_a", lambda _: False)("IfcRelDefinesByProperties"):
+                pset = getattr(rel, "RelatingPropertyDefinition", None)
+                if pset is None:
+                    continue
+                if getattr(pset, "is_a", lambda _: False)("IfcPropertySet"):
+                    for prop in getattr(pset, "HasProperties", []) or []:
+                        if getattr(prop, "is_a", lambda _: False)("IfcPropertySingleValue"):
+                            if getattr(prop, "Name", None) in property_names:
+                                nv = getattr(prop, "NominalValue", None)
+                                if nv is None:
+                                    return None
+                                return getattr(nv, "wrappedValue", nv)
+    except Exception:
+        pass
+    return None
+
+
+def _get_property_as_mm(space: Any, *property_names: str) -> Optional[float]:
+    """
+    Get numeric property and convert to millimeters if value looks like meters (< 100).
+    """
+    val = _get_property_value(space, *property_names)
+    if val is None:
+        return None
+    try:
+        n = float(val)
+        if n < 0:
+            return None
+        if n < 100:
+            return round(n * 1000.0)
+        return round(n)
+    except (TypeError, ValueError):
+        return None
+
+
+def _get_property_bool(space: Any, *property_names: str) -> Optional[bool]:
+    """Get boolean property from space."""
+    val = _get_property_value(space, *property_names)
+    if val is None:
+        return None
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        return val.upper() in ("TRUE", "YES", "1", "OUTWARD")
+    try:
+        return bool(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def _get_dimensions_from_boundary(boundary: List[List[float]]) -> Dict[str, float]:
+    """Compute width_mm (min dimension) and depth_mm/length_mm (max dimension) from boundary in mm."""
+    if not boundary or len(boundary) < 3:
+        return {}
+    xs = [p[0] for p in boundary]
+    ys = [p[1] for p in boundary]
+    w_x = max(xs) - min(xs)
+    w_y = max(ys) - min(ys)
+    min_dim = min(w_x, w_y)
+    max_dim = max(w_x, w_y)
+    return {"width_mm": min_dim, "depth_mm": max_dim, "length_mm": max_dim}
+
+
+def _get_door_swing_and_width(space: Any, ifc_file: Any) -> Tuple[Optional[bool], Optional[float]]:
+    """
+    From space's BoundedBy, find IfcDoor and get SwingDirection (outward=True) and width in mm.
+    Returns (opens_outward, width_mm).
+    """
+    opens_outward = None
+    width_mm = None
+    try:
+        for rel in getattr(space, "BoundedBy", []) or []:
+            if getattr(rel, "is_a", lambda _: False)("IfcRelSpaceBoundary"):
+                elem = getattr(rel, "RelatedBuildingElement", None)
+                if elem is not None and getattr(elem, "is_a", lambda _: False)("IfcDoor"):
+                    swing = _get_property_value(elem, "SwingDirection", "OperationType")
+                    if swing is not None:
+                        s = str(swing).upper()
+                        opens_outward = "OUTWARD" in s or "OUT" in s
+                    w = _get_property_as_mm(elem, "Width", "ClearWidth", "OverallWidth")
+                    if w is not None:
+                        width_mm = w
+                    if opens_outward is not None and width_mm is not None:
+                        return (opens_outward, width_mm)
+    except Exception:
+        pass
+    return (opens_outward, width_mm)
+
+
 def _extract_space_data(space: Any, ifc_file: Any) -> Optional[Dict[str, Any]]:
     """
     Extract data from a single IfcSpace entity.
@@ -144,6 +247,121 @@ def _extract_space_data(space: Any, ifc_file: Any) -> Optional[Dict[str, Any]]:
         boundary = _extract_boundary(space, ifc_file)
         if boundary:
             space_data["boundary"] = boundary
+        
+        # --- Rule-related properties from IFC (add only if present) ---
+        
+        # Corridor width (3:22)
+        v = _get_property_as_mm(space, "Width", "ClearWidth")
+        if v is not None:
+            space_data["corridor_width_mm"] = v
+        
+        # Ramp slope (3:231) - ratio e.g. 0.0833 for 1:12
+        slope_val = _get_property_value(space, "Slope", "Gradient")
+        if slope_val is not None:
+            try:
+                r = float(slope_val)
+                if r > 1 and r <= 100:
+                    r = r / 100.0
+                if 0 <= r <= 1:
+                    space_data["ramp_slope_ratio"] = r
+            except (TypeError, ValueError):
+                pass
+        
+        # Handrail height (3:232)
+        v = _get_property_as_mm(space, "HandrailHeight")
+        if v is not None:
+            space_data["handrail_height_mm"] = v
+        
+        # Bathroom door opens outward (3:241) - from door in space
+        door_swing, _ = _get_door_swing_and_width(space, ifc_file)
+        if door_swing is not None:
+            space_data["door_opens_outward"] = door_swing
+        
+        # Elevator dimensions (3:143, 3:144) - from space dimensions or properties
+        ew = _get_property_as_mm(space, "Width", "CabWidth")
+        ed = _get_property_as_mm(space, "Depth", "CabDepth", "Length")
+        if boundary and (ew is None or ed is None):
+            dims = _get_dimensions_from_boundary(boundary)
+            if space_type in ("elevator", "lift", "hiss") or "elevator" in space_name.lower() or "hiss" in space_name.lower():
+                if ew is None and dims.get("width_mm") is not None:
+                    ew = dims["width_mm"]
+                if ed is None and dims.get("depth_mm") is not None:
+                    ed = dims["depth_mm"]
+        if ew is not None:
+            space_data["elevator_width_mm"] = ew
+        if ed is not None:
+            space_data["elevator_depth_mm"] = ed
+        
+        # Elevator door width (3:144) - from door in space
+        _, door_w = _get_door_swing_and_width(space, ifc_file)
+        if door_w is not None and (space_type in ("elevator", "lift", "hiss") or "elevator" in space_name.lower() or "hiss" in space_name.lower()):
+            space_data["elevator_door_width_mm"] = door_w
+        
+        # Emergency exit width (3:51)
+        v = _get_property_as_mm(space, "ExitWidth", "Width", "ClearWidth")
+        if v is not None:
+            space_data["emergency_exit_width_mm"] = v
+        
+        # Emergency exit door opens outward (3:52) - from door when space is exit type
+        if space_type in ("emergency_exit", "exit", "evacuation", "nödutgång", "utgång", "emergency") or "exit" in space_name.lower() or "nöd" in space_name.lower():
+            door_swing_ex, _ = _get_door_swing_and_width(space, ifc_file)
+            if door_swing_ex is not None:
+                space_data["emergency_exit_door_opens_outward"] = door_swing_ex
+        
+        # Stair rise and run (3:421)
+        rise = _get_property_as_mm(space, "RiserHeight", "Rise", "StepRise")
+        if rise is not None:
+            space_data["stair_rise_mm"] = rise
+        run = _get_property_as_mm(space, "TreadDepth", "Run", "Tread", "StepRun")
+        if run is not None:
+            space_data["stair_run_mm"] = run
+        
+        # Parking dimensions (3:131, 3:132) - from space or boundary
+        pw = _get_property_as_mm(space, "Width", "ParkingWidth", "ClearWidth")
+        pl = _get_property_as_mm(space, "Length", "ParkingLength", "Depth")
+        if boundary and (pw is None or pl is None):
+            dims = _get_dimensions_from_boundary(boundary)
+            if space_type in ("parking", "parking_space", "parkeringsplats", "accessible_parking") or "parking" in space_name.lower() or "parker" in space_name.lower():
+                if pw is None and dims.get("width_mm") is not None:
+                    pw = dims["width_mm"]
+                if pl is None and dims.get("length_mm") is not None:
+                    pl = dims["length_mm"]
+        if pw is not None:
+            space_data["parking_width_mm"] = pw
+        if pl is not None:
+            space_data["parking_length_mm"] = pl
+        
+        # Stair handrail both sides (3:411)
+        both = _get_property_bool(space, "HandrailBothSides", "HandrailsBothSides")
+        if both is not None:
+            space_data["stair_handrail_both_sides"] = both
+        
+        # Stair width (3:412)
+        v = _get_property_as_mm(space, "StairWidth", "Width", "ClearWidth")
+        if v is not None:
+            space_data["stair_width_mm"] = v
+        elif boundary and space_type in ("stair", "stairs", "trappa"):
+            dims = _get_dimensions_from_boundary(boundary)
+            if dims.get("width_mm") is not None:
+                space_data["stair_width_mm"] = dims["width_mm"]
+        
+        # Window sill height (3:531)
+        v = _get_property_as_mm(space, "SillHeight", "WindowSillHeight", "SillHeightAboveFloor")
+        if v is not None:
+            space_data["window_sill_height_mm"] = v
+        
+        # Window opening size (3:532)
+        wo_w = _get_property_as_mm(space, "OpeningWidth", "Width", "WindowWidth")
+        wo_h = _get_property_as_mm(space, "OpeningHeight", "Height", "WindowHeight")
+        if wo_w is not None:
+            space_data["window_opening_width_mm"] = wo_w
+        if wo_h is not None:
+            space_data["window_opening_height_mm"] = wo_h
+        
+        # Tactile guidance (3:611)
+        tg = _get_property_bool(space, "TactileGuidance", "TactileFloorGuidance", "TactileGuidancePresent")
+        if tg is not None:
+            space_data["tactile_guidance_present"] = tg
         
         return space_data
         
