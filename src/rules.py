@@ -173,6 +173,56 @@ class BFS2024ComplianceChecker:
         "description_sv": "Viloplats eller breddning minst var 25:e meter i korridorer."
     }
     
+    RULE_ELEVATOR_SIZE = {
+        "id": "BFS-2024:1-3:143",
+        "name": "Elevator Minimum Size (1100mm x 1400mm)",
+        "reference": "BFS 2024:1 Section 3:143",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["elevator", "lift", "hiss"],
+        "description_en": "Elevator cabin minimum clear dimensions 1100mm x 1400mm.",
+        "description_sv": "Hisskupans minsta fria mått 1100 mm x 1400 mm."
+    }
+    
+    RULE_ELEVATOR_DOOR_WIDTH = {
+        "id": "BFS-2024:1-3:144",
+        "name": "Elevator Door Width (800mm minimum)",
+        "reference": "BFS 2024:1 Section 3:144",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["elevator", "lift", "hiss"],
+        "description_en": "Elevator door clear width minimum 800mm.",
+        "description_sv": "Hissdörrens fria bredd minst 800 mm."
+    }
+    
+    RULE_EMERGENCY_EXIT_WIDTH = {
+        "id": "BFS-2024:1-3:51",
+        "name": "Emergency Exit Width (900mm minimum)",
+        "reference": "BFS 2024:1 Section 3:51",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["emergency_exit", "exit", "nödutgång", "utgång", "emergency", "evacuation"],
+        "description_en": "Emergency exit clear width minimum 900mm.",
+        "description_sv": "Nödutgångens fria bredd minst 900 mm."
+    }
+    
+    RULE_EMERGENCY_EXIT_DOOR_SWING = {
+        "id": "BFS-2024:1-3:52",
+        "name": "Emergency Exit Door Opens Outward",
+        "reference": "BFS 2024:1 Section 3:52",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["emergency_exit", "exit", "nödutgång", "utgång", "emergency", "evacuation"],
+        "description_en": "Emergency exit door must open outward for evacuation.",
+        "description_sv": "Nödutgångens dörr ska öppnas utåt för evakuering."
+    }
+    
+    RULE_STAIR_DIMENSIONS = {
+        "id": "BFS-2024:1-3:421",
+        "name": "Stair Step Height (max 150mm) and Depth (min 300mm)",
+        "reference": "BFS 2024:1 Section 3:421",
+        "severity": Severity.CRITICAL,
+        "applies_to": ["stair", "stairs", "trappa"],
+        "description_en": "Step rise maximum 150mm, step run minimum 300mm.",
+        "description_sv": "Steghöjden max 150 mm, stegbredden minst 300 mm."
+    }
+    
     def __init__(self):
         """Initialize the compliance checker"""
         self.rules = [
@@ -184,6 +234,11 @@ class BFS2024ComplianceChecker:
             self.RULE_HANDRAIL_HEIGHT,
             self.RULE_BATHROOM_DOOR_SWING,
             self.RULE_REST_AREA_25M,
+            self.RULE_ELEVATOR_SIZE,
+            self.RULE_ELEVATOR_DOOR_WIDTH,
+            self.RULE_EMERGENCY_EXIT_WIDTH,
+            self.RULE_EMERGENCY_EXIT_DOOR_SWING,
+            self.RULE_STAIR_DIMENSIONS,
         ]
     
     def check_compliance(
@@ -252,6 +307,31 @@ class BFS2024ComplianceChecker:
         # Rule 8: Rest Area Every 25m (3:311)
         rule_results.append(
             self.check_rest_area_25m_rule(space_dict)
+        )
+        
+        # Rule 9: Elevator Minimum Size (3:143)
+        rule_results.append(
+            self.check_elevator_size_rule(space_dict)
+        )
+        
+        # Rule 10: Elevator Door Width (3:144)
+        rule_results.append(
+            self.check_elevator_door_width_rule(space_dict)
+        )
+        
+        # Rule 11: Emergency Exit Width (3:51)
+        rule_results.append(
+            self.check_emergency_exit_width_rule(space_dict)
+        )
+        
+        # Rule 12: Emergency Exit Door Opens Outward (3:52)
+        rule_results.append(
+            self.check_emergency_exit_door_swing_rule(space_dict)
+        )
+        
+        # Rule 13: Stair Step Dimensions (3:421)
+        rule_results.append(
+            self.check_stair_dimensions_rule(space_dict)
         )
         
         # Calculate statistics
@@ -729,6 +809,282 @@ class BFS2024ComplianceChecker:
             rule_name=rule["name"],
             status=RuleStatus.FAIL,
             details="Rest area or widening required at least every 25m in corridor.",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_elevator_size_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:143 - Elevator Minimum Size.
+        
+        Requirement: Elevator cabin minimum 1100mm x 1400mm clear dimensions.
+        English: Elevator cabin minimum clear dimensions 1100mm x 1400mm.
+        Swedish: Hisskupans minsta fria mått 1100 mm x 1400 mm.
+        
+        Returns NOT_CHECKED if elevator dimensions are not in space_dict.
+        """
+        rule = self.RULE_ELEVATOR_SIZE
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        width_mm = space_dict.get("elevator_width_mm")
+        depth_mm = space_dict.get("elevator_depth_mm")
+        if width_mm is None or depth_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Elevator cabin dimensions not available in current IFC file. Will be checked when elevator geometry extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        min_width, min_depth = 1100, 1400
+        if width_mm >= min_width and depth_mm >= min_depth:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Elevator size {width_mm:.0f}mm x {depth_mm:.0f}mm >= required {min_width}mm x {min_depth}mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        issues = []
+        if width_mm < min_width:
+            issues.append(f"width {width_mm:.0f}mm < {min_width}mm")
+        if depth_mm < min_depth:
+            issues.append(f"depth {depth_mm:.0f}mm < {min_depth}mm")
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Elevator size insufficient: {'; '.join(issues)}. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_elevator_door_width_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:144 - Elevator Door Width.
+        
+        Requirement: Elevator door clear width minimum 800mm.
+        English: Elevator door clear width minimum 800mm.
+        Swedish: Hissdörrens fria bredd minst 800 mm.
+        
+        Returns NOT_CHECKED if elevator door width is not in space_dict.
+        """
+        rule = self.RULE_ELEVATOR_DOOR_WIDTH
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        door_width_mm = space_dict.get("elevator_door_width_mm")
+        if door_width_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Elevator door width not available in current IFC file. Will be checked when elevator door extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        required = 800
+        if door_width_mm >= required:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Elevator door width {door_width_mm:.0f}mm >= required {required}mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Elevator door width {door_width_mm:.0f}mm < required {required}mm. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_emergency_exit_width_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:51 - Emergency Exit Width.
+        
+        Requirement: Emergency exit clear width minimum 900mm.
+        English: Emergency exit clear width minimum 900mm.
+        Swedish: Nödutgångens fria bredd minst 900 mm.
+        
+        Returns NOT_CHECKED if emergency exit width is not in space_dict.
+        """
+        rule = self.RULE_EMERGENCY_EXIT_WIDTH
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        width_mm = space_dict.get("emergency_exit_width_mm")
+        if width_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Emergency exit width not available in current IFC file. Will be checked when exit geometry extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        required = 900
+        if width_mm >= required:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Emergency exit width {width_mm:.0f}mm >= required {required}mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Emergency exit width {width_mm:.0f}mm < required {required}mm. {rule.get('description_en', '')}",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_emergency_exit_door_swing_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:52 - Emergency Exit Door Opens Outward.
+        
+        Requirement: Emergency exit door must open outward for evacuation.
+        English: Emergency exit door must open outward for evacuation.
+        Swedish: Nödutgångens dörr ska öppnas utåt för evakuering.
+        
+        Returns NOT_CHECKED if door swing data is not in space_dict.
+        """
+        rule = self.RULE_EMERGENCY_EXIT_DOOR_SWING
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        opens_outward = space_dict.get("emergency_exit_door_opens_outward")
+        if opens_outward is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Emergency exit door swing direction not available in current IFC file. Will be checked when exit door extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        if opens_outward:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Emergency exit door opens outward. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details="Emergency exit door does not open outward; must open outward for evacuation.",
+            severity=rule["severity"],
+            reference=rule["reference"]
+        )
+    
+    def check_stair_dimensions_rule(self, space_dict: Dict[str, Any]) -> RuleResult:
+        """
+        Check BFS 2024:1 Section 3:421 - Stair Step Height and Depth.
+        
+        Requirement: Step rise (height) maximum 150mm, step run (depth) minimum 300mm.
+        English: Step rise maximum 150mm, step run minimum 300mm.
+        Swedish: Steghöjden max 150 mm, stegbredden minst 300 mm.
+        
+        Returns NOT_CHECKED if stair dimension data is not in space_dict.
+        """
+        rule = self.RULE_STAIR_DIMENSIONS
+        space_type = space_dict.get("type", "").lower()
+        
+        if space_type not in rule["applies_to"]:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_APPLICABLE,
+                details=f"Rule does not apply to space type: {space_type}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        rise_mm = space_dict.get("stair_rise_mm")
+        run_mm = space_dict.get("stair_run_mm")
+        if rise_mm is None or run_mm is None:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.NOT_CHECKED,
+                details="Stair step dimensions (rise/run) not available in current IFC file. Will be checked when stair geometry extraction is implemented.",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        
+        max_rise, min_run = 150, 300
+        if rise_mm <= max_rise and run_mm >= min_run:
+            return RuleResult(
+                rule_id=rule["id"],
+                rule_name=rule["name"],
+                status=RuleStatus.PASS,
+                details=f"Step rise {rise_mm:.0f}mm <= {max_rise}mm, run {run_mm:.0f}mm >= {min_run}mm. {rule.get('description_en', '')}",
+                severity=rule["severity"],
+                reference=rule["reference"]
+            )
+        issues = []
+        if rise_mm > max_rise:
+            issues.append(f"rise {rise_mm:.0f}mm > max {max_rise}mm")
+        if run_mm < min_run:
+            issues.append(f"run {run_mm:.0f}mm < min {min_run}mm")
+        return RuleResult(
+            rule_id=rule["id"],
+            rule_name=rule["name"],
+            status=RuleStatus.FAIL,
+            details=f"Stair dimensions non-compliant: {'; '.join(issues)}. {rule.get('description_en', '')}",
             severity=rule["severity"],
             reference=rule["reference"]
         )
